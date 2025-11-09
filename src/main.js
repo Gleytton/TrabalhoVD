@@ -2,6 +2,8 @@
 
 import { loadDb } from "./config";
 import { registerFiles, runAnalyses } from "./analysis";
+// Importamos AMBOS os gráficos
+import { createTemporalLineChart, createMonthlyBarChart } from "./charts"; 
 
 // Função simples para exibir resultados
 function appendResults(title, data, targetId = "#results") {
@@ -35,12 +37,18 @@ window.onload = async () => {
     const button = document.getElementById('process-button');
     const outputDiv = document.getElementById('output');
     const resultsDiv = document.getElementById('results');
+    
+    // Novas constantes para os contêineres de gráfico
+    const lineChartContainer = document.getElementById('temporal-chart-container');
+    const barChartContainer = document.getElementById('monthly-bar-chart-container');
 
     // Inicializa o Listener do Botão
     input.addEventListener('change', () => {
         button.disabled = input.files.length === 0;
         outputDiv.textContent = '';
         resultsDiv.innerHTML = '';
+        lineChartContainer.innerHTML = ''; // Limpa o contêiner 1
+        barChartContainer.innerHTML = ''; // Limpa o contêiner 2
     });
 
     button.addEventListener('click', async () => {
@@ -49,13 +57,15 @@ window.onload = async () => {
         
         outputDiv.textContent = 'Iniciando o DB e Processando...';
         resultsDiv.innerHTML = '';
+        lineChartContainer.innerHTML = ''; 
+        barChartContainer.innerHTML = ''; 
         button.disabled = true;
 
         let db = null;
         let conn = null;
 
         try {
-            // 1. INICIALIZA O BANCO DE DADOS (Resolve o Worker/CORS)
+            // 1. INICIALIZA O BANCO DE DADOS
             db = await loadDb();
             conn = await db.connect();
             outputDiv.textContent = 'DB inicializado. Registrando arquivos...';
@@ -66,13 +76,29 @@ window.onload = async () => {
             
             const results = await runAnalyses(conn, fileNames);
 
-            // 3. EXIBE RESULTADOS
-            resultsDiv.innerHTML = '<h1>Análises Concluídas</h1>';
+            // 3. 📈 VISUALIZAÇÃO D3.JS (CHAMANDO AMBOS OS GRÁFICOS)
+            
+            // A. Gráfico de Linha (Temporal Contínuo)
+            createTemporalLineChart(
+                results.analiseDiaria, 
+                "#temporal-chart-container" 
+            );
+
+            // B. Gráfico de Barras Mensais (Sazonalidade)
+            createMonthlyBarChart(
+                results.analiseDiaria, 
+                "#monthly-bar-chart-container" // Usa o segundo contêiner
+            );
+
+            // 4. Exibir Amostras de Tabela (Para validação)
+            resultsDiv.innerHTML = '<h1>Análises Concluídas</h1>'; // Título para as amostras
+            resultsDiv.innerHTML += '<h2>Amostras dos Dados Agregados:</h2>';
+
             appendResults("Análise Diária (Temporal)", results.analiseDiaria.slice(0, 10), "#results");
             appendResults("Análise Horária/Semanal (Variações)", results.analiseHoraria.slice(0, 10), "#results");
             appendResults("Análise Financeira (Pagamento/Gorjeta)", results.analiseFinanceira.slice(0, 10), "#results");
             
-            outputDiv.textContent = '✅ Sucesso! Resultados exibidos abaixo.';
+            outputDiv.textContent = '✅ Sucesso! Gráficos e resultados exibidos abaixo.';
 
         } catch (error) {
             outputDiv.textContent = `❌ Erro Fatal no Processamento. Verifique o console.`;

@@ -82,3 +82,23 @@ export async function runAnalyses(conn, fileNames) {
     
     return resultados;
 }
+
+
+
+
+// Exemplo de como usar a consulta dentro do seu main.js, se precisar de um teste rápido:
+
+async function visualizarPrimeirasLinhas(conn) {
+    const arquivoDeTeste = 'yellow_tripdata_2019-01.parquet'; // Escolha um de seus 48 arquivos
+    const queryDeTeste = `
+        SELECT *
+        FROM read_parquet('${arquivoDeTeste}')
+        LIMIT 10;
+    `;
+    
+    // Supondo que 'executarConsulta' é acessível e executa a query na sua conexão 'conn'
+    const resultado = await executarConsulta(conn, queryDeTeste);
+    
+    console.log(`Primeiras 10 linhas de ${arquivoDeTeste}:`, resultado);
+    return resultado;
+}
