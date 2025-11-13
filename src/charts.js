@@ -181,3 +181,165 @@ export function createMonthlyBarChart(data, containerSelector) {
         .style("text-align", "center")
         .text("Variação Sazonal: Total de Corridas por Mês (48 Meses)");
 }
+export function createHourlyHeatmap(data, containerSelector) {
+    // 1. Limpeza e Mapeamento de Dados
+    // Mapeia os números DOW (Day of Week) do SQL (0=Domingo, 1=Segunda...) para nomes
+    const dayOfWeekNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    // Mapeia as horas (0-23) para labels
+    const hourLabels = d3.range(24).map(h => `${h}h`);
+
+    const cleanData = data.map(d => ({
+        dia_da_semana: Number(String(d.dia_da_semana)),
+        hora_do_dia: Number(String(d.hora_do_dia)),
+        total_corridas: Number(String(d.total_corridas))
+    }));
+
+    if (cleanData.length === 0) {
+        document.querySelector(containerSelector).innerHTML = "Nenhum dado para o Heatmap.";
+        return;
+    }
+
+    // 2. Setup do SVG
+    // 🛑 AÇÃO: Ajuste na margem inferior para os rótulos de hora
+    const heatmapMargin = { top: 30, right: 30, bottom: 40, left: 50 }; 
+    const heatmapWidth = 900 - heatmapMargin.left - heatmapMargin.right;
+    const heatmapHeight = 350 - heatmapMargin.top - heatmapMargin.bottom;
+
+    const svg = d3.select(containerSelector)
+        .append("svg")
+        .attr("width", heatmapWidth + heatmapMargin.left + heatmapMargin.right)
+        .attr("height", heatmapHeight + heatmapMargin.top + heatmapMargin.bottom)
+        .append("g")
+        .attr("transform", `translate(${heatmapMargin.left},${heatmapMargin.top})`);
+
+    // 3. Definição das Escalas
+    // Eixo X (Horas)
+    const xScale = d3.scaleBand()
+        .range([0, heatmapWidth])
+        .domain(hourLabels)
+        .padding(0.05);
+
+    // Eixo Y (Dias da Semana)
+    const yScale = d3.scaleBand()
+        .range([heatmapHeight, 0]) // Invertido para Dom (0) ficar no topo
+        .domain(dayOfWeekNames) 
+        .padding(0.05);
+
+    // Escala de Cor
+    const maxCorridas = d3.max(cleanData, d => d.total_corridas);
+    const colorScale = d3.scaleSequential(d3.interpolateInferno) // Experimente: interpolateViridis, interpolatePlasma
+        .domain([0, maxCorridas]);
+
+    // 4. Desenhar os Eixos
+    svg.append("g")
+        .attr("transform", `translate(0,${heatmapHeight})`)
+        .call(d3.axisBottom(xScale).tickValues(xScale.domain().filter((d, i) => i % 2 === 0))) // Mostra a cada 2 horas
+        .selectAll("text")
+        .style("text-anchor", "middle");
+
+    svg.append("g")
+        .call(d3.axisLeft(yScale));
+
+    // 5. Desenhar os Retângulos (Células do Heatmap)
+    svg.selectAll()
+        .data(cleanData)
+        .enter()
+        .append("rect")
+        .attr("x", d => xScale(`${d.hora_do_dia}h`))
+        .attr("y", d => yScale(dayOfWeekNames[d.dia_da_semana]))
+        .attr("width", xScale.bandwidth())
+        .attr("height", yScale.bandwidth())
+        .style("fill", d => colorScale(d.total_corridas))
+        .append("title") // Tooltip simples
+        .text(d => `${dayOfWeekNames[d.dia_da_semana]}, ${d.hora_do_dia}h: ${d.total_corridas.toLocaleString()} corridas`);
+
+    // 6. Título do Gráfico
+    svg.append("text")
+        .attr("x", heatmapWidth / 2)
+        .attr("y", 0 - (heatmapMargin.top / 2))
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text("Volume de Corridas por Hora e Dia da Semana");
+}
+
+export function createPaymentTypeDonutChart(data, containerSelector) {
+    // 1. Mapeamento de Dados
+    // Os dados de táxi usam IDs: 1=Cartão, 2=Dinheiro, 3=Não pago, 4=Disputa, etc.
+    const paymentTypeMap = {
+        1: "Cartão de Crédito",
+        2: "Dinheiro",
+        3: "Não Pago",
+        4: "Disputa",
+        5: "Desconhecido",
+        6: "Viagem Anulada"
+    };
+
+    const cleanData = data
+        .map(d => ({
+            // Mapeia o ID para um nome legível
+            payment_type_label: paymentTypeMap[d.payment_type] || `Outro (${d.payment_type})`, 
+            total_corridas: Number(String(d.total_corridas))
+        }))
+        .filter(d => d.total_corridas > 0); // Filtra tipos sem corridas
+
+    if (cleanData.length === 0) {
+        document.querySelector(containerSelector).innerHTML = "Nenhum dado para o gráfico de pagamentos.";
+        return;
+    }
+
+    // 2. Setup do SVG
+    const donutWidth = 450;
+    const donutHeight = 450;
+    const donutMargin = 40;
+    const radius = Math.min(donutWidth, donutHeight) / 2 - donutMargin;
+
+    const svg = d3.select(containerSelector)
+        .append("svg")
+        .attr("width", donutWidth)
+        .attr("height", donutHeight)
+        .append("g")
+        .attr("transform", `translate(${donutWidth / 2},${donutHeight / 2})`);
+
+    // 3. Escala de Cor
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+        .domain(cleanData.map(d => d.payment_type_label));
+
+    // 4. Geradores de Pie e Arc
+    // Gera os ângulos para cada fatia
+    const pie = d3.pie()
+        .value(d => d.total_corridas)
+        .sort(null); // Mantém a ordem dos dados (que já vêm ordenados por total_corridas)
+
+    // Define o raio interno e externo (para criar o "buraco" do donut)
+    const arc = d3.arc()
+        .innerRadius(radius * 0.5) // Raio interno (aumente para um buraco maior)
+        .outerRadius(radius * 0.8);
+
+    const outerArc = d3.arc()
+        .innerRadius(radius * 0.9)
+        .outerRadius(radius * 0.9);
+
+    // 5. Desenhar as Fatias do Donut
+    const arcs = svg.selectAll(".arc")
+        .data(pie(cleanData))
+        .enter()
+        .append("g")
+        .attr("class", "arc");
+
+    arcs.append("path")
+        .attr("d", arc)
+        .attr("fill", d => colorScale(d.data.payment_type_label))
+        .append("title")
+        .text(d => `${d.data.payment_type_label}: ${d.data.total_corridas.toLocaleString()} corridas`);
+
+    // 6. Adicionar Rótulos (Opcional, mas recomendado)
+    // ... (Código para adicionar rótulos e linhas de legenda pode ser complexo,
+    // por simplicidade, estamos usando o <title> para tooltip)
+    // Vamos adicionar um título central
+    svg.append("text")
+        .attr("text-anchor", "middle")
+        .style("font-size", "18px")
+        .style("font-weight", "bold")
+        .text("Tipos de Pagamento");
+}
