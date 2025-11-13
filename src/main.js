@@ -3,7 +3,10 @@
 import { loadDb } from "./config";
 import { registerFiles, runAnalyses } from "./analysis";
 // Importamos AMBOS os gráficos
-import { createTemporalLineChart, createMonthlyBarChart } from "./charts"; 
+import { createTemporalLineChart, 
+        createHourlyHeatmap,
+        createPaymentTypeDonutChart ,
+         createMonthlyBarChart } from "./charts"; 
 
 // Função simples para exibir resultados
 function appendResults(title, data, targetId = "#results") {
@@ -88,6 +91,18 @@ window.onload = async () => {
             createMonthlyBarChart(
                 results.analiseDiaria, 
                 "#monthly-bar-chart-container" // Usa o segundo contêiner
+            );
+
+            // C. Heatmap de Horário
+            createHourlyHeatmap(
+                results.analiseHoraria,
+                "#heatmap-chart-container"
+            );
+
+            // D. Gráfico de Rosca (Pagamentos)
+            createPaymentTypeDonutChart(
+                results.analiseFinanceira,
+                "#donut-chart-container"
             );
 
             // 4. Exibir Amostras de Tabela (Para validação)
