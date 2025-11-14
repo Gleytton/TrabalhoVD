@@ -105,14 +105,6 @@ window.onload = async () => {
                 "#donut-chart-container"
             );
 
-            // 4. Exibir Amostras de Tabela (Para validação)
-            resultsDiv.innerHTML = '<h1>Análises Concluídas</h1>'; // Título para as amostras
-            resultsDiv.innerHTML += '<h2>Amostras dos Dados Agregados:</h2>';
-
-            appendResults("Análise Diária (Temporal)", results.analiseDiaria.slice(0, 10), "#results");
-            appendResults("Análise Horária/Semanal (Variações)", results.analiseHoraria.slice(0, 10), "#results");
-            appendResults("Análise Financeira (Pagamento/Gorjeta)", results.analiseFinanceira.slice(0, 10), "#results");
-            
             outputDiv.textContent = '✅ Sucesso! Gráficos e resultados exibidos abaixo.';
 
         } catch (error) {
