@@ -2,51 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Visualização de Dados - NYC Taxis</title>
-    
-    <style>
-        /* O CSS aplica a largura total do contêiner para ambos os gráficos */
-        #temporal-chart-container svg,
-        #monthly-bar-chart-container svg { 
-            width: 100%; 
-            height: auto; 
-            max-width: 1200px; /* Limite a largura máxima para telas muito largas */
-        }
-        
-        /* Estilo para as tabelas de amostra */
-        #results table {
-            margin: 20px auto;
-            border-collapse: collapse;
-            font-size: small;
-        }
-        #results th, #results td {
-            border: 1px solid #ccc;
-            padding: 5px 10px;
-        }
-    </style>
-
+    <title>package.json</title>
   </head>
   <body>
-    <div id="app">
-        <h1>Processamento DuckDB - Integrante 1</h1>
-        <p>1. Selecione **todos** os arquivos .parquet (2019 a 2022):</p>
-        <input type="file" id="parquet-files-input" multiple>
-        <button id="process-button" disabled>Processar e Gerar Análises</button>
-        
-        <pre id="output"></pre>
-        
-        <div id="temporal-chart-container"></div> 
-        
-        <div id="monthly-bar-chart-container"></div>
-
-        <div id="heatmap-chart-container"></div>
-        
-        <div id="donut-chart-container"></div>
-        
-        <div id="results"></div> 
-    </div>
-    
+    <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

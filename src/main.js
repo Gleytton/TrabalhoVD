@@ -1,128 +1,58 @@
 // src/main.js
+import './style.css';
+import * as d3 from 'd3';
+// Importamos a função de análise do novo arquivo
+import { buscarDadosIniciais } from './analises'; 
 
-import { loadDb } from "./config";
-import { registerFiles, runAnalyses } from "./analysis";
-// Importamos AMBOS os gráficos
-import { createTemporalLineChart, 
-        createHourlyHeatmap,
-        createPaymentTypeDonutChart ,
-         createMonthlyBarChart } from "./charts"; 
+document.querySelector('#app').innerHTML = `
+  <div>
+    <h1>Dashboard DuckDB</h1>
+    <div id="loading">Carregando dados...</div>
+    <div id="resultado"></div>
+    <div id="chart"></div>
+  </div>
+`;
 
-// Função simples para exibir resultados
-function appendResults(title, data, targetId = "#results") {
-    const tableDiv = document.querySelector(targetId);
-    let tableHTML = `<h2>${title} (Amostra de ${data.length} linhas)</h2>`;
-    
-    if (data.length === 0) {
-        tableDiv.innerHTML += `${tableHTML} <p>Nenhum dado encontrado para esta análise.</p>`;
-        return;
-    }
+async function iniciarApp() {
+  try {
+    console.log("Iniciando análise...");
 
-    // Cria a tabela
-    tableHTML += '<table border="1"><tr>';
-    Object.keys(data[0]).forEach(key => { tableHTML += `<th>${key}</th>`; });
-    tableHTML += '</tr>';
+    // CHAMA A LÓGICA SEPARADA AQUI
+    const dados = await buscarDadosIniciais();
 
-    data.forEach( (item) => {
-        tableHTML += '<tr>';
-        Object.values(item).forEach(value => { tableHTML += `<td>${value}</td>`; });
-        tableHTML += '</tr>';
-    });
-    tableHTML += '</table>';
+    // Sumir com o loading
+    document.getElementById('loading').style.display = 'none';
 
-    if(tableDiv) {
-        tableDiv.innerHTML += tableHTML;
-    }
+    // Mostrar no Console
+    console.table(dados);
+
+    // Mostrar na tela (HTML simples já que é só 1 linha)
+    mostrarDadosNaTela(dados);
+
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('loading').innerText = "Erro: " + err.message;
+  }
 }
 
-window.onload = async () => {
-    const input = document.getElementById('parquet-files-input');
-    const button = document.getElementById('process-button');
-    const outputDiv = document.getElementById('output');
-    const resultsDiv = document.getElementById('results');
-    
-    // Novas constantes para os contêineres de gráfico
-    const lineChartContainer = document.getElementById('temporal-chart-container');
-    const barChartContainer = document.getElementById('monthly-bar-chart-container');
+// Função auxiliar apenas para imprimir JSON na tela
+function mostrarDadosNaTela(dados) {
+  const div = document.getElementById('resultado');
 
-    // Inicializa o Listener do Botão
-    input.addEventListener('change', () => {
-        button.disabled = input.files.length === 0;
-        outputDiv.textContent = '';
-        resultsDiv.innerHTML = '';
-        lineChartContainer.innerHTML = ''; // Limpa o contêiner 1
-        barChartContainer.innerHTML = ''; // Limpa o contêiner 2
-    });
+    const total = dados[0].linhas.toString();
 
-    button.addEventListener('click', async () => {
-        const files = Array.from(input.files);
-        if (files.length === 0) return;
-        
-        outputDiv.textContent = 'Iniciando o DB e Processando...';
-        resultsDiv.innerHTML = '';
-        lineChartContainer.innerHTML = ''; 
-        barChartContainer.innerHTML = ''; 
-        button.disabled = true;
+  const jsonTexto = JSON.stringify(dados, (key, value) => 
+    typeof value === 'bigint' ? value.toString() : value
+  , 2);
 
-        let db = null;
-        let conn = null;
+  div.innerHTML = `
+    <h3>Sucesso! Veja a primeira linha:</h3>
+    <pre style="background: #000000ff; padding: 10px; border-radius: 5px; overflow: auto; text-align: left;">${total}</pre>
+  `;
+    d3.select("body")
+    .append("p")
+    .text("New paragraph!");
+}
 
-        try {
-            // 1. INICIALIZA O BANCO DE DADOS
-            db = await loadDb();
-            conn = await db.connect();
-            outputDiv.textContent = 'DB inicializado. Registrando arquivos...';
-
-            // 2. REGISTRA E RODA AS ANÁLISES
-            const fileNames = await registerFiles(db, files);
-            outputDiv.textContent = `Arquivos registrados. Executando ${fileNames.length} consultas...`;
-            
-            const results = await runAnalyses(conn, fileNames);
-
-            // 3. 📈 VISUALIZAÇÃO D3.JS (CHAMANDO AMBOS OS GRÁFICOS)
-            
-            // A. Gráfico de Linha (Temporal Contínuo)
-            createTemporalLineChart(
-                results.analiseDiaria, 
-                "#temporal-chart-container" 
-            );
-
-            // B. Gráfico de Barras Mensais (Sazonalidade)
-            createMonthlyBarChart(
-                results.analiseDiaria, 
-                "#monthly-bar-chart-container" // Usa o segundo contêiner
-            );
-
-            // C. Heatmap de Horário
-            createHourlyHeatmap(
-                results.analiseHoraria,
-                "#heatmap-chart-container"
-            );
-
-            // D. Gráfico de Rosca (Pagamentos)
-            createPaymentTypeDonutChart(
-                results.analiseFinanceira,
-                "#donut-chart-container"
-            );
-
-            // 4. Exibir Amostras de Tabela (Para validação)
-            resultsDiv.innerHTML = '<h1>Análises Concluídas</h1>'; // Título para as amostras
-            resultsDiv.innerHTML += '<h2>Amostras dos Dados Agregados:</h2>';
-
-            appendResults("Análise Diária (Temporal)", results.analiseDiaria.slice(0, 10), "#results");
-            appendResults("Análise Horária/Semanal (Variações)", results.analiseHoraria.slice(0, 10), "#results");
-            appendResults("Análise Financeira (Pagamento/Gorjeta)", results.analiseFinanceira.slice(0, 10), "#results");
-            
-            outputDiv.textContent = '✅ Sucesso! Gráficos e resultados exibidos abaixo.';
-
-        } catch (error) {
-            outputDiv.textContent = `❌ Erro Fatal no Processamento. Verifique o console.`;
-            resultsDiv.innerHTML = `<h2>Erro:</h2><pre>${error.message}</pre>`;
-            console.error(error);
-        } finally {
-            if (conn) await conn.close();
-            if (db) await db.terminate();
-            button.disabled = false;
-        }
-    });
-};
+iniciarApp();
