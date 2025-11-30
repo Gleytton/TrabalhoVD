@@ -7,7 +7,7 @@ export async function buscarDadosIniciais() {
   const conn = await db.connect();
 
 
-  const csvUrl = '/Data/dados_bitcoin.csv';
+  const csvUrl = '/Data/terremotos.csv';
   const response = await fetch(csvUrl);
   const csvText = await response.text();
   
